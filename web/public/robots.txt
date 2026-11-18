@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://liberty0722.github.io/Hindsight/sitemap-index.xml

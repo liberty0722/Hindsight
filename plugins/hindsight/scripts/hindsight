@@ -1,0 +1,24 @@
+#!/bin/sh
+# Runs one of the binaries that ship with the Hindsight app (hindsight-cli, hindsight-mcp) and passes
+# the remaining arguments through. The plugin carries no binaries of its own: it uses
+# the copy inside the installed app, so it is always the version the app's index needs.
+#
+# Looked up in order: $HINDSIGHT_BIN_DIR (set it when Hindsight lives somewhere else), the macOS
+# app in /Applications or ~/Applications, the Linux install locations, then PATH.
+name=$1
+shift
+for dir in "$HINDSIGHT_BIN_DIR" \
+  /Applications/Hindsight.app/Contents/MacOS \
+  "$HOME/Applications/Hindsight.app/Contents/MacOS" \
+  "$HOME/.local/bin" \
+  /usr/bin \
+  /usr/local/bin; do
+  if [ -n "$dir" ] && [ -x "$dir/$name" ]; then
+    exec "$dir/$name" "$@"
+  fi
+done
+if command -v "$name" >/dev/null 2>&1; then
+  exec "$name" "$@"
+fi
+echo "Hindsight's $name was not found. Install Hindsight (https://github.com/liberty0722/Hindsight), or set HINDSIGHT_BIN_DIR to the folder that holds it." >&2
+exit 127

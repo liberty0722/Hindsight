@@ -1,0 +1,13 @@
+{
+  "name": "hindsight",
+  "displayName": "Hindsight",
+  "description": "Every new session starts knowing where your coding agents left off in this project, and Hindsight's MCP tools let Claude search and read any earlier session from any agent. Read-only; needs the Hindsight app.",
+  "author": {
+    "name": "liberty0722",
+    "url": "https://github.com/liberty0722"
+  },
+  "homepage": "https://github.com/liberty0722/Hindsight",
+  "repository": "https://github.com/liberty0722/Hindsight",
+  "license": "MIT",
+  "keywords": ["sessions", "history", "memory", "context", "mcp"]
+}

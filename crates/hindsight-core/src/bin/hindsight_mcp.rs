@@ -1,0 +1,162 @@
+//! hindsight-mcp:Hindsight 索引的只读 MCP server(stdio)。
+//!
+//!   hindsight-mcp [--db PATH] [--on-request]
+//!                                 以 MCP server 身份服务 stdin/stdout(客户端这样起它)
+//!   hindsight-mcp setup [--db PATH]    打印接入 Claude Code / Codex / Cursor 的配置片段
+//!   hindsight-mcp call TOOL [JSON]     跑一次工具调用、打印文本(调试用)
+//!   hindsight-mcp --version | --help
+//!
+//! 索引库默认取 GUI 同一份(`db::default_db_path`),只读打开;库不存在或太老
+//! 直接以清晰的 stderr 错误退出(非零),让客户端的日志说明白"先启动一次 Hindsight"。
+use std::io::{self, Write as _};
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+use hindsight_core::db::Store;
+use hindsight_core::mcp::{self, McpServer, Usage};
+
+const USAGE: &str = "hindsight-mcp — read-only MCP server for your Hindsight session index
+
+USAGE:
+  hindsight-mcp [--db PATH] [--on-request]
+                                  serve MCP over stdio (what MCP clients run)
+  hindsight-mcp setup [--db PATH]      print config snippets for Claude Code / Codex / Cursor
+  hindsight-mcp call TOOL [JSON]       run one tool call and print its text (debugging)
+  hindsight-mcp --version | --help
+
+OPTIONS:
+  --db PATH      index database (default: Hindsight's own, e.g. ~/Library/Application Support/hindsight/hindsight.db)
+  --on-request   tell agents to use these tools only when you ask (same as HINDSIGHT_ON_REQUEST=1)";
+
+struct Args {
+    db: Option<PathBuf>,
+    usage: Usage,
+    command: Vec<String>,
+}
+
+fn parse_args() -> Result<Args, String> {
+    let mut db = None;
+    // 参数压过环境变量
+    let mut usage = Usage::from_env();
+    let mut command = Vec::new();
+    let mut it = std::env::args().skip(1);
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--db" => {
+                db = Some(PathBuf::from(
+                    it.next().ok_or("--db needs a path".to_string())?,
+                ))
+            }
+            "--on-request" => usage = Usage::OnRequest,
+            "--help" | "-h" => {
+                println!("{USAGE}");
+                std::process::exit(0);
+            }
+            "--version" | "-V" => {
+                println!("hindsight-mcp {}", mcp::SERVER_VERSION);
+                std::process::exit(0);
+            }
+            s if s.starts_with("--db=") => db = Some(PathBuf::from(&s[5..])),
+            s if s.starts_with('-') => return Err(format!("unknown option {s}\n\n{USAGE}")),
+            _ => command.push(a),
+        }
+    }
+    Ok(Args { db, usage, command })
+}
+
+fn db_path(db: &Option<PathBuf>) -> PathBuf {
+    hindsight_core::db::path_or_default(db.as_deref())
+}
+
+fn open(db: &Option<PathBuf>, usage: Usage) -> Result<McpServer, String> {
+    let (store, adapters) = mcp::open_index(&db_path(db))?;
+    Ok(McpServer::new(store, adapters, usage))
+}
+
+fn main() -> ExitCode {
+    let args = match parse_args() {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("hindsight-mcp: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    match args.command.first().map(String::as_str) {
+        None => {
+            let server = match open(&args.db, args.usage) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("hindsight-mcp: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let stdin = io::stdin();
+            let stdout = io::stdout();
+            match server.serve(stdin.lock(), stdout.lock()) {
+                Ok(()) => ExitCode::SUCCESS,
+                // 客户端先走一步、管道断开是正常收场
+                Err(e) if e.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("hindsight-mcp: {e}");
+                    ExitCode::from(1)
+                }
+            }
+        }
+        Some("setup") => {
+            let bin = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("hindsight-mcp"));
+            let mut out = io::stdout().lock();
+            let _ = writeln!(out, "hindsight-mcp binary: {}\n", bin.display());
+            for s in mcp::setup_snippets(&bin) {
+                let _ = writeln!(out, "## {} — {}\n\n{}\n", s.client, s.hint, s.text);
+            }
+            // 只探库,不必为一行提示把整份 roster 建起来
+            if let Err(e) = Store::open_read_only(&db_path(&args.db)) {
+                let _ = writeln!(out, "Note: {e:#}");
+            }
+            ExitCode::SUCCESS
+        }
+        Some("call") => {
+            let Some(tool) = args.command.get(1) else {
+                eprintln!("hindsight-mcp: call needs a tool name\n\n{USAGE}");
+                return ExitCode::from(2);
+            };
+            let json_args = args.command.get(2).map(String::as_str).unwrap_or("{}");
+            let params: serde_json::Value = match serde_json::from_str(json_args) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("hindsight-mcp: arguments are not valid JSON: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let server = match open(&args.db, args.usage) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("hindsight-mcp: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let request = serde_json::json!({
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": { "name": tool, "arguments": params },
+            });
+            let reply = server.handle_line(&request.to_string()).unwrap_or_default();
+            let reply: serde_json::Value = serde_json::from_str(&reply).unwrap_or_default();
+            if let Some(err) = reply.get("error") {
+                eprintln!("hindsight-mcp: {}", err["message"].as_str().unwrap_or("error"));
+                return ExitCode::from(1);
+            }
+            let text = reply["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap_or_default();
+            println!("{text}");
+            if reply["result"]["isError"].as_bool().unwrap_or(false) {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Some(other) => {
+            eprintln!("hindsight-mcp: unknown command {other}\n\n{USAGE}");
+            ExitCode::from(2)
+        }
+    }
+}

@@ -1,0 +1,16 @@
+pub mod adapters;
+pub mod changes;
+pub mod chat;
+pub mod cleanup;
+pub mod cli;
+pub mod db;
+pub mod diff;
+pub mod mcp;
+pub mod models;
+pub mod relations;
+pub mod remote;
+pub mod scanner;
+pub mod services;
+pub mod skills;
+pub mod text;
+pub mod watcher;

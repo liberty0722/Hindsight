@@ -1,0 +1,72 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- "Look Back":代码/diff 窗口 + 回溯时钟徽标(hindsight = 回看会话历史) -->
+  <defs>
+    <linearGradient id="bg" x1="100" y1="100" x2="924" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E2A4A"/>
+      <stop offset="0.55" stop-color="#121A33"/>
+      <stop offset="1" stop-color="#0A0F1F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="300" cy="230" r="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5B7BFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#5B7BFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="240" x2="0" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26324F"/>
+      <stop offset="1" stop-color="#18213A"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="580" y1="560" x2="860" y2="880" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC88A"/>
+      <stop offset="1" stop-color="#F2894E"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="100" y="100" width="824" height="824" rx="185" ry="185"/>
+    </clipPath>
+    <clipPath id="cardclip">
+      <rect x="216" y="240" width="592" height="480" rx="52" ry="52"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#bg)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#glow)"/>
+
+    <!-- 代码窗口 -->
+    <rect x="216" y="240" width="592" height="480" rx="52" ry="52" fill="url(#card)"/>
+    <g clip-path="url(#cardclip)">
+      <rect x="216" y="240" width="592" height="84" fill="#FFFFFF" fill-opacity="0.04"/>
+      <!-- diff 行底色 -->
+      <rect x="216" y="430" width="592" height="62" fill="#F43F5E" fill-opacity="0.16"/>
+      <rect x="216" y="492" width="592" height="62" fill="#22C55E" fill-opacity="0.16"/>
+      <rect x="216" y="430" width="10" height="62" fill="#FB7185"/>
+      <rect x="216" y="492" width="10" height="62" fill="#4ADE80"/>
+    </g>
+    <rect x="216" y="240" width="592" height="480" rx="52" ry="52" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="4"/>
+
+    <!-- 标题栏圆点 -->
+    <circle cx="282" cy="282" r="15" fill="#FF6B6B"/>
+    <circle cx="330" cy="282" r="15" fill="#FFC857"/>
+    <circle cx="378" cy="282" r="15" fill="#4ADE80"/>
+
+    <!-- 代码行 -->
+    <g stroke-linecap="round" stroke-width="24" fill="none">
+      <path d="M 272 380 L 420 380" stroke="#7AA2FF"/>
+      <path d="M 452 380 L 560 380" stroke="#94A3B8" stroke-opacity="0.55"/>
+      <path d="M 272 461 L 330 461" stroke="#FB7185"/>
+      <path d="M 362 461 L 600 461" stroke="#FB7185" stroke-opacity="0.75"/>
+      <path d="M 272 523 L 330 523" stroke="#4ADE80"/>
+      <path d="M 362 523 L 660 523" stroke="#4ADE80" stroke-opacity="0.85"/>
+      <path d="M 272 604 L 380 604" stroke="#C792EA"/>
+      <path d="M 412 604 L 500 604" stroke="#94A3B8" stroke-opacity="0.55"/>
+      <path d="M 304 664 L 460 664" stroke="#94A3B8" stroke-opacity="0.4"/>
+    </g>
+
+    <!-- 回溯徽标:背景色描边隔开窗口 -->
+    <circle cx="716" cy="716" r="172" fill="#0D1326"/>
+    <circle cx="716" cy="716" r="148" fill="url(#badge)"/>
+    <g transform="translate(608 608) scale(9)" fill="none" stroke="#141B33" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+      <path d="M12 7v5l4 2"/>
+    </g>
+  </g>
+</svg>

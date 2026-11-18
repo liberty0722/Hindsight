@@ -1,0 +1,29 @@
+# 官网(web/,托管在 Vercel)的 GitHub 星数与下载链接是构建时取的,两次构建之间不变。
+# 每天让 Vercel 重新构建一次,数字最多晚一天;也可在 Actions 页手动点 Run workflow。
+# 此 job 与 release.yml 末尾的 web job 一起构成官网联动,二者都受 VERCEL_DEPLOY_HOOK
+# 门控:没配该 secret 就自动跳过(exit 0,不报错、不空耗),配好后定时刷新与发版联动
+# 才真正生效。
+name: Refresh project site
+
+on:
+  schedule:
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  refresh:
+    name: Trigger Vercel deploy hook
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Rebuild the site
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "VERCEL_DEPLOY_HOOK not set; skipping"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "deploy triggered"
